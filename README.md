@@ -1,6 +1,6 @@
 # primegraph-core-kt
 
-`com.github.primegraph:primegraph-core-kt` — the shared cross-package vocabulary for PrimeGraph
+`io.github.primegraph:primegraph-core-kt` — the shared cross-package vocabulary for PrimeGraph
 generated Kotlin packages.
 
 ## Why this project exists
@@ -64,10 +64,21 @@ its own normalisation in front of it.
 
 | | |
 | --- | --- |
-| group | `com.github.primegraph` |
+| group | `io.github.primegraph` |
 | artifactId | `primegraph-core-kt` |
 | `rootProject.name` | `primegraph-core-kt` |
-| repository | GitHub Packages Maven, `https://maven.pkg.github.com/primegraph/primegraph-core-kt` |
+| repository | Maven Central |
+
+```groovy
+implementation 'io.github.primegraph:primegraph-core-kt:1.0.0'
+```
+
+Central serves it to anyone, with no credentials. GitHub Packages was the obvious place and turned
+out to be the wrong one: it serves Maven artifacts only to authenticated clients even from a public
+repository, so every consumer of a generated package would have needed a token to resolve this one.
+
+The group is `io.github.<owner>` rather than `com.github.<owner>` because that is the namespace
+Central verifies for a GitHub-hosted project; `com.github.*` is not offered.
 
 `rootProject.name` is load-bearing. A Gradle source-dependency consumer — `includeBuild` with
 `dependencySubstitution` — matches the requested coordinates on group + **project name**, not on the
@@ -127,10 +138,31 @@ trailing period.
 ## Releasing
 
 ```sh
-GITHUB_ACTOR=<user> GITHUB_TOKEN=<token with write:packages> sh scripts/release.sh 1.4.0
+sh scripts/release.sh 1.4.0
 ```
 
+Four values have to be in `~/.gradle/gradle.properties` first, and the script checks all four before
+it changes anything:
+
+```
+mavenCentralUsername=<Central Portal user token name>
+mavenCentralPassword=<Central Portal user token password>
+signingKeyId=<GPG key id used to sign the artifacts>
+signingInMemoryKeyPassword=<that key's passphrase>
+```
+
+The secret key itself is not among them. It stays in the local GPG keyring, and the script exports it
+into the environment only for the length of the upload — a properties file cannot hold its newlines,
+and a copy on disk is one more place it can leak from. The public half must be on a keyserver
+(`keys.openpgp.org`) or Central rejects the signature.
+
 The argument is a bare semver — no leading `v`; the tag gets one. The script refuses to run on a dirty
-tree, off the default branch, or when the tag already exists, and it does all of those checks before it
-changes anything. It then bumps `version` in `gradle.properties`, builds, commits
-`chore(release): v1.4.0`, tags, pushes the branch and the tag, and runs `gradle publish`.
+tree, off the default branch, or when the tag already exists. It then bumps `version` in
+`gradle.properties`, builds, commits `chore(release): v1.4.0`, tags, pushes the branch and the tag,
+and runs `publishAndReleaseToMavenCentral`, which uploads the signed bundle and promotes it, so no
+manual step is left in the Portal UI.
+
+Central requires a javadoc artifact and a signature on every file; the publishing plugin produces
+both. It also requires the plugin to be pointed at `SonatypeHost.CENTRAL_PORTAL` explicitly — the
+version pinned here still defaults to the legacy OSSRH staging API, which is decommissioned and
+answers `402`.

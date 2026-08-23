@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
   id 'org.jetbrains.kotlin.jvm' version '2.3.21'
   // Runtime.File is @Serializable and the codec core declares KSerializers, so
@@ -51,7 +53,9 @@ tasks.named('test') {
 }
 
 mavenPublishing {
-  publishToMavenCentral()
+  // CENTRAL_PORTAL explicitly: this plugin version still defaults to the legacy
+  // OSSRH staging API, which is decommissioned and answers 402.
+  publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
   // Credentials come from ~/.gradle/gradle.properties, never from the repo:
   // mavenCentralUsername / mavenCentralPassword are the Portal user token, and
   // signingInMemoryKey / signingInMemoryKeyPassword the GPG key.
