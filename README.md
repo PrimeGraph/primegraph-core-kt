@@ -22,11 +22,43 @@ There are five of these, one per target language:
 `primegraph-core-ts`, `primegraph-core-go`, `primegraph-core-swift`, `primegraph-core-py`,
 `primegraph-core-kt`.
 
-## Status
+## What is here
 
-Scaffolding only. No shared declarations have been migrated yet;
-`src/main/kotlin/com/github/primegraph/core/PrimeGraphCore.kt` holds a single placeholder so the build
-has something to compile.
+Everything lives in one Kotlin package, `com.github.primegraph.core.runtime`.
+
+| file | declares |
+| --- | --- |
+| `DslError.kt` | `DslError<Payload>`, `DslThrow`, `DslErrorView<Payload>`, `DSL_ERROR_MESSAGES`, `defaultErrorMessage`, `arrivedErrorCode`, `arrivedErrorJson`, `coercedPayload`, `coerceError` |
+| `Runtime.kt` | `Runtime`, and under it `Runtime.File`, `Runtime.FormPart`, `Runtime.formField` |
+| `Serialization.kt` | the codec core: `UUIDSerializer`, `OffsetDateTimeSerializer`, `CalendarDaySerializer`, `BigDecimalSerializer`, `ByteArraySerializer`, `dslSerializersModule`, `ktJson`, `unionBranchElement` / `unionBranchOf` / `unionBranchOfFirst` / `unionBranchTag` / `unionBranchMismatch`, `jsonEncoderOf`, `jsonDecoderOf`, `jsonElementOfAny`, `jsonElementOfSerializable` |
+
+Every name is spelled exactly as the emitters spell it today, so an emitted call site is unchanged by
+the move; only the import line differs.
+
+### Why `…core.runtime`
+
+Generated code puts these declarations in `<generated package>.runtime` and refers to them
+unqualified (`catch (e: DslThrow)`) or through the object (`Runtime.File`). Naming the shared package
+`…core.runtime` makes the migration a one-for-one swap of the import line —
+`import com.github.primegraph.<bundle>.runtime.DslThrow` becomes
+`import com.github.primegraph.core.runtime.DslThrow` — and every unqualified use keeps reading the
+way it reads now.
+
+### What is deliberately not here
+
+Firebase and HTTP transport stay inside the generated packages, along with the pure expression
+helpers. Concretely: `decodeFirestoreData`, `decodeSnapshotValue`, `firestoreTimestampOf` and the rest
+of the firestore interop, `encodeCallableData`, all of `Firebase.kt`, `Runtime.HttpAuth` /
+`HttpRequest` / `HttpResponse`, `Runtime.fetch`, `parseResponse`, `httpValidationFailed`.
+
+That split is what keeps this project off `firebase-firestore`: the codec core names no Firestore
+type, and this build declares no `google()` repository, so a Firestore reference could not resolve
+even by accident.
+
+One consequence worth naming: the firestore-interop copy of `jsonElementOfAny` carries three extra
+branches for `Timestamp`, `DocumentReference` and `GeoPoint`. Those branches cannot come here. The
+function shared here is the firestore-free form, and a bundle that reads Firestore snapshots keeps
+its own normalisation in front of it.
 
 ## Coordinates
 
@@ -52,11 +84,25 @@ JVM ones.
 build.gradle                                             plugins, coordinates, publishing
 settings.gradle                                          rootProject.name
 gradle.properties                                        version, bumped by scripts/release.sh
-src/main/kotlin/com/github/primegraph/core/…             public surface
+src/main/kotlin/com/github/primegraph/core/runtime/…     public surface
+src/test/kotlin/com/github/primegraph/core/runtime/…     tests, one file per source file
 .githooks/                                               Conventional Commits hook, POSIX shell
 scripts/setup.sh                                         one-time clone setup
 scripts/release.sh                                       the release procedure
 ```
+
+## Dependencies
+
+One, and it is unavoidable: the codec core is built on kotlinx.
+
+```
+api 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+```
+
+`api` rather than `implementation` because kotlinx types stand in public signatures here —
+`DslThrow.payloadJson` is a `JsonElement`, `ktJson` is a `Json`, the five serializers are
+`KSerializer`s. That is the version every generated bundle already declares, itself as `api`, so
+adding this project to a bundle contributes no second kotlinx version to the dependency graph.
 
 ## Setup
 

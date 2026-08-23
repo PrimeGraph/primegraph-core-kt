@@ -1,5 +1,9 @@
 plugins {
   id 'org.jetbrains.kotlin.jvm' version '2.3.21'
+  // Runtime.File is @Serializable and the codec core declares KSerializers, so
+  // the serialization compiler plugin is required here as it is in every
+  // generated package. Its version is pinned to the Kotlin version.
+  id 'org.jetbrains.kotlin.plugin.serialization' version '2.3.21'
   id 'java-library'
   id 'maven-publish'
 }
@@ -26,6 +30,23 @@ repositories {
 }
 
 dependencies {
+  // `api`, not `implementation`: kotlinx types stand in this project's PUBLIC
+  // signatures — `DslThrow.payloadJson` is a `JsonElement`, `ktJson` is a
+  // `Json`, the five serializers are `KSerializer`s — so a consumer that names
+  // any of them needs the artifact on its own compile classpath.
+  //
+  // The version is the one every generated bundle already declares, itself as
+  // `api` (scope `compile` in the published poms), so adding this project to a
+  // bundle contributes no second kotlinx version to the graph.
+  api 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+
+  testImplementation platform('org.junit:junit-bom:5.11.4')
+  testImplementation 'org.jetbrains.kotlin:kotlin-test'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
 }
 
 publishing {
