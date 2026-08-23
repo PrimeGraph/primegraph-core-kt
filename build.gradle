@@ -1,0 +1,78 @@
+plugins {
+  id 'org.jetbrains.kotlin.jvm' version '2.3.21'
+  id 'java-library'
+  id 'maven-publish'
+}
+
+group = 'com.github.primegraph'
+// version comes from gradle.properties, which is what scripts/release.sh bumps.
+
+// A plain Kotlin/JVM library, not com.android.library: this package holds only
+// the shared vocabulary and touches no Android API, and a JVM artifact is
+// consumable both by the generated Android libraries and by the JVM ones.
+// The toolchain and the JVM target match what the generated packages compile
+// against, so the class files load there without a downgrade.
+kotlin {
+  jvmToolchain(17)
+  explicitApi()
+}
+
+java {
+  withSourcesJar()
+}
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+}
+
+publishing {
+  publications {
+    release(MavenPublication) {
+      from components.java
+      // Kept equal to rootProject.name so that Maven consumers and Gradle
+      // source-dependency consumers resolve the same coordinates.
+      artifactId = 'primegraph-core-kt'
+
+      pom {
+        name.set('primegraph-core-kt')
+        description.set('Shared cross-package vocabulary for PrimeGraph generated Kotlin packages')
+        url.set('https://github.com/primegraph/primegraph-core-kt')
+
+        licenses {
+          license {
+            name.set('UNLICENSED')
+            distribution.set('repo')
+          }
+        }
+
+        developers {
+          developer {
+            id.set('PrimeGraphGenerator')
+            name.set('PrimeGraph Generator')
+            email.set('generator@primegraph.ai')
+          }
+        }
+
+        scm {
+          connection.set('scm:git:git://github.com/primegraph/primegraph-core-kt.git')
+          developerConnection.set('scm:git:ssh://github.com/primegraph/primegraph-core-kt.git')
+          url.set('https://github.com/primegraph/primegraph-core-kt')
+        }
+      }
+    }
+  }
+
+  repositories {
+    maven {
+      name = 'GitHubPackages'
+      url = uri('https://maven.pkg.github.com/primegraph/primegraph-core-kt')
+      credentials {
+        username = System.getenv('GITHUB_ACTOR')
+        password = System.getenv('GITHUB_TOKEN')
+      }
+    }
+  }
+}

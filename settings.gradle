@@ -1,0 +1,17 @@
+pluginManagement {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+plugins {
+  id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0'
+}
+
+// rootProject.name is load-bearing, not cosmetic. A Gradle source dependency
+// (includeBuild / dependencySubstitution) matches a consumer's requested
+// coordinates on group + *project name*, not on the published artifactId. The
+// published artifactId is set separately in build.gradle, and the two are kept
+// equal on purpose so both consumption paths resolve to the same thing.
+rootProject.name = 'primegraph-core-kt'

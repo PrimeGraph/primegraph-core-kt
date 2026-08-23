@@ -1,0 +1,24 @@
+# Build output
+.gradle/
+build/
+out/
+
+# Gradle wrapper: the jar is part of the repository, everything else is not
+!gradle/wrapper/gradle-wrapper.jar
+
+# Credentials and local environment
+.env
+.env.*
+local.properties
+gradle-local.properties
+*.pem
+*.key
+*.jks
+*.keystore
+google-services.json
+
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
