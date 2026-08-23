@@ -5,10 +5,15 @@ plugins {
   // generated package. Its version is pinned to the Kotlin version.
   id 'org.jetbrains.kotlin.plugin.serialization' version '2.3.21'
   id 'java-library'
-  id 'maven-publish'
+  // Sonatype ships no official Gradle plugin for the Central Portal. This one
+  // assembles the javadoc artifact, signs everything and uploads the bundle,
+  // which the Portal rejects the release without.
+  id 'com.vanniktech.maven.publish' version '0.30.0'
 }
 
-group = 'com.github.primegraph'
+// io.github.<owner>, not com.github.<owner>: Central verifies GitHub-hosted
+// namespaces under io.github, and this one is verified for the PrimeGraph org.
+group = 'io.github.primegraph'
 // version comes from gradle.properties, which is what scripts/release.sh bumps.
 
 // A plain Kotlin/JVM library, not com.android.library: this package holds only
@@ -19,10 +24,6 @@ group = 'com.github.primegraph'
 kotlin {
   jvmToolchain(17)
   explicitApi()
-}
-
-java {
-  withSourcesJar()
 }
 
 repositories {
@@ -49,52 +50,43 @@ tasks.named('test') {
   useJUnitPlatform()
 }
 
-publishing {
-  publications {
-    release(MavenPublication) {
-      from components.java
-      // Kept equal to rootProject.name so that Maven consumers and Gradle
-      // source-dependency consumers resolve the same coordinates.
-      artifactId = 'primegraph-core-kt'
+mavenPublishing {
+  publishToMavenCentral()
+  // Credentials come from ~/.gradle/gradle.properties, never from the repo:
+  // mavenCentralUsername / mavenCentralPassword are the Portal user token, and
+  // signingInMemoryKey / signingInMemoryKeyPassword the GPG key.
+  signAllPublications()
 
-      pom {
-        name.set('primegraph-core-kt')
-        description.set('Shared cross-package vocabulary for PrimeGraph generated Kotlin packages')
-        url.set('https://github.com/primegraph/primegraph-core-kt')
+  // Kept equal to rootProject.name so Maven consumers and Gradle
+  // source-dependency consumers resolve the same coordinates.
+  coordinates(group.toString(), 'primegraph-core-kt', version.toString())
 
-        licenses {
-          license {
-            name.set('MIT')
-            url.set('https://opensource.org/licenses/MIT')
-            distribution.set('repo')
-          }
-        }
+  pom {
+    name.set('primegraph-core-kt')
+    description.set('Shared cross-package vocabulary for PrimeGraph generated Kotlin packages')
+    url.set('https://github.com/PrimeGraph/primegraph-core-kt')
+    inceptionYear.set('2026')
 
-        developers {
-          developer {
-            id.set('PrimeGraphGenerator')
-            name.set('PrimeGraph Generator')
-            email.set('generator@primegraph.ai')
-          }
-        }
-
-        scm {
-          connection.set('scm:git:git://github.com/primegraph/primegraph-core-kt.git')
-          developerConnection.set('scm:git:ssh://github.com/primegraph/primegraph-core-kt.git')
-          url.set('https://github.com/primegraph/primegraph-core-kt')
-        }
+    licenses {
+      license {
+        name.set('MIT')
+        url.set('https://opensource.org/licenses/MIT')
+        distribution.set('repo')
       }
     }
-  }
 
-  repositories {
-    maven {
-      name = 'GitHubPackages'
-      url = uri('https://maven.pkg.github.com/primegraph/primegraph-core-kt')
-      credentials {
-        username = System.getenv('GITHUB_ACTOR')
-        password = System.getenv('GITHUB_TOKEN')
+    developers {
+      developer {
+        id.set('PrimeGraphGenerator')
+        name.set('PrimeGraph Generator')
+        email.set('generator@primegraph.ai')
       }
+    }
+
+    scm {
+      connection.set('scm:git:git://github.com/PrimeGraph/primegraph-core-kt.git')
+      developerConnection.set('scm:git:ssh://github.com/PrimeGraph/primegraph-core-kt.git')
+      url.set('https://github.com/PrimeGraph/primegraph-core-kt')
     }
   }
 }

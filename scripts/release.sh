@@ -7,7 +7,14 @@
 # Every check that can fail runs before anything is mutated, so an already
 # released version stops the script instead of half-publishing it.
 #
-# Requires GITHUB_ACTOR and GITHUB_TOKEN, the latter with write:packages.
+# Requires the Central Portal user token and the GPG signing key, both read by
+# Gradle from ~/.gradle/gradle.properties and never from this repo:
+#   mavenCentralUsername / mavenCentralPassword   — the Central Portal token
+#   signingKeyId / signingInMemoryKeyPassword     — which GPG key to sign with
+#
+# The secret key itself stays in the GPG keyring and is exported into the
+# environment for the length of the upload: a properties file cannot hold its
+# newlines, and a copy on disk is one more place it can leak from.
 #
 # rootProject.name in settings.gradle matters as much as the artifactId. A
 # Gradle source-dependency consumer (includeBuild / dependencySubstitution)
@@ -77,10 +84,15 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$DEFAULT_BRANCH")" ]; t
   exit 1
 fi
 
-if [ -z "${GITHUB_ACTOR:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
-  echo "release: GITHUB_ACTOR and GITHUB_TOKEN must be set, gradle publish would fail after tagging" >&2
-  exit 1
-fi
+# Checked before anything is bumped or tagged: Central rejects an unsigned or
+# unauthenticated bundle, and a half-done release is worse than none.
+GRADLE_PROPS="${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"
+for key in mavenCentralUsername mavenCentralPassword signingKeyId signingInMemoryKeyPassword; do
+  if ! grep -Eq "^${key}=" "$GRADLE_PROPS" 2>/dev/null; then
+    echo "release: $key is missing from $GRADLE_PROPS, the Central upload would fail after tagging" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Eq '^version=' gradle.properties; then
   echo "release: gradle.properties has no 'version=' line to bump" >&2
@@ -106,10 +118,23 @@ git push origin "$TAG"
 
 # --- publish ----------------------------------------------------------------
 
-if ! "$GRADLE" --quiet publish; then
-  echo "release: $TAG is committed, tagged and pushed but gradle publish failed" >&2
-  echo "release: fix the cause and re-run only 'gradle publish', do not re-run this script" >&2
+SIGNING_KEY_ID=$(grep '^signingKeyId=' "$GRADLE_PROPS" | cut -d= -f2-)
+SIGNING_PASS=$(grep '^signingInMemoryKeyPassword=' "$GRADLE_PROPS" | cut -d= -f2-)
+ORG_GRADLE_PROJECT_signingInMemoryKey=$(gpg --batch --pinentry-mode loopback \
+  --passphrase "$SIGNING_PASS" --armor --export-secret-keys "$SIGNING_KEY_ID")
+ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_PASS"
+export ORG_GRADLE_PROJECT_signingInMemoryKey ORG_GRADLE_PROJECT_signingInMemoryKeyPassword
+if [ -z "$ORG_GRADLE_PROJECT_signingInMemoryKey" ]; then
+  echo "release: could not export $SIGNING_KEY_ID from the GPG keyring" >&2
   exit 1
 fi
 
-echo "release: published com.github.primegraph:primegraph-core-kt:$VERSION ($TAG)"
+# publishAndReleaseToMavenCentral uploads the signed bundle and promotes it, so
+# no manual step is left in the Portal UI.
+if ! "$GRADLE" --quiet publishAndReleaseToMavenCentral --no-configuration-cache; then
+  echo "release: $TAG is committed, tagged and pushed but the Central upload failed" >&2
+  echo "release: fix the cause and re-run only the upload, do not re-run this script" >&2
+  exit 1
+fi
+
+echo "release: published io.github.primegraph:primegraph-core-kt:$VERSION ($TAG)"
