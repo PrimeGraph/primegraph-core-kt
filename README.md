@@ -30,6 +30,7 @@ Everything lives in one Kotlin package, `com.github.primegraph.core.runtime`.
 | --- | --- |
 | `DslError.kt` | `DslError<Payload>`, `DslThrow`, `DslErrorView<Payload>`, `DSL_ERROR_MESSAGES`, `defaultErrorMessage`, `arrivedErrorCode`, `arrivedErrorJson`, `coercedPayload`, `coerceError` |
 | `Runtime.kt` | `Runtime`, and under it `Runtime.File`, `Runtime.FormPart`, `Runtime.formField` |
+| `Http.kt` | `HttpAuth`, `HttpRequest`, `HttpResponse` — the value types of one outbound call, with no transport beside them |
 | `Serialization.kt` | the codec core: `UUIDSerializer`, `OffsetDateTimeSerializer`, `CalendarDaySerializer`, `BigDecimalSerializer`, `ByteArraySerializer`, `dslSerializersModule`, `ktJson`, `unionBranchElement` / `unionBranchOf` / `unionBranchOfFirst` / `unionBranchTag` / `unionBranchMismatch`, `jsonEncoderOf`, `jsonDecoderOf`, `jsonElementOfAny`, `jsonElementOfSerializable` |
 
 Every name is spelled exactly as the emitters spell it today, so an emitted call site is unchanged by
@@ -48,8 +49,12 @@ way it reads now.
 
 Firebase and HTTP transport stay inside the generated packages, along with the pure expression
 helpers. Concretely: `decodeFirestoreData`, `decodeSnapshotValue`, `firestoreTimestampOf` and the rest
-of the firestore interop, `encodeCallableData`, all of `Firebase.kt`, `Runtime.HttpAuth` /
-`HttpRequest` / `HttpResponse`, `Runtime.fetch`, `parseResponse`, `httpValidationFailed`.
+of the firestore interop, `encodeCallableData`, all of `Firebase.kt`, `fetch` with the auth and
+query-string machinery around it, `parseResponse`, `httpValidationFailed`.
+
+The HTTP request and response VALUE types are the one exception, and `Http.kt` above holds them: they
+carry no behaviour, every generated package repeated them verbatim, and nothing about them names an
+SDK. The transport that fills them stays generated.
 
 That split is what keeps this project off `firebase-firestore`: the codec core names no Firestore
 type, and this build declares no `google()` repository, so a Firestore reference could not resolve
