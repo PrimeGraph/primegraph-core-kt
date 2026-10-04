@@ -75,7 +75,7 @@ jobs:
           distribution: temurin
           # The toolchain build.gradle declares, so Gradle resolves it locally
           # instead of downloading a second JDK through the foojay resolver.
-          java-version: '17'
+          java-version: '25'
           cache: gradle
 
       # The command the README documents. Gradle's `build` runs `check`, and

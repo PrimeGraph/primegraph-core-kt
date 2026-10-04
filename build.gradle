@@ -1,11 +1,12 @@
 import com.vanniktech.maven.publish.SonatypeHost
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-  id 'org.jetbrains.kotlin.jvm' version '2.3.21'
+  id 'org.jetbrains.kotlin.jvm' version '2.4.20'
   // Runtime.File is @Serializable and the codec core declares KSerializers, so
   // the serialization compiler plugin is required here as it is in every
   // generated package. Its version is pinned to the Kotlin version.
-  id 'org.jetbrains.kotlin.plugin.serialization' version '2.3.21'
+  id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.20'
   id 'java-library'
   // Sonatype ships no official Gradle plugin for the Central Portal. This one
   // assembles the javadoc artifact, signs everything and uploads the bundle,
@@ -21,10 +22,20 @@ group = 'io.github.primegraph'
 // A plain Kotlin/JVM library, not com.android.library: this package holds only
 // the shared vocabulary and touches no Android API, and a JVM artifact is
 // consumable both by the generated Android libraries and by the JVM ones.
-// The toolchain and the JVM target match what the generated packages compile
-// against, so the class files load there without a downgrade.
+// The toolchain and the bytecode level match what the generated packages
+// compile with: JDK 25 builds, Java 17 class files load in every consumer.
+// Kotlin checks that its jvmTarget agrees with the Java compile's
+// targetCompatibility, so both are set to the one bytecode level.
+java {
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+}
+
 kotlin {
-  jvmToolchain(17)
+  jvmToolchain(25)
+  compilerOptions {
+    jvmTarget = JvmTarget.JVM_17
+  }
   explicitApi()
 }
 
