@@ -31,6 +31,7 @@ Everything lives in one Kotlin package, `com.github.primegraph.core.runtime`.
 | `DslError.kt` | `DslError<Payload>`, `DslThrow`, `DslErrorView<Payload>`, `DSL_ERROR_MESSAGES`, `defaultErrorMessage`, `arrivedErrorCode`, `arrivedErrorJson`, `coercedPayload`, `coerceError` |
 | `Runtime.kt` | `Runtime`, and under it `Runtime.File`, `Runtime.FormPart`, `Runtime.formField` |
 | `Http.kt` | `HttpAuth`, `HttpRequest`, `HttpResponse` — the value types of one outbound call, with no transport beside them |
+| `IntegralJson.kt` | `integralJson` — every whole number in a JSON tree (or JSON text) respelled as an integer literal, the one call emitted code makes before a typed decode |
 | `Serialization.kt` | the codec core: `UUIDSerializer`, `OffsetDateTimeSerializer`, `CalendarDaySerializer`, `BigDecimalSerializer`, `ByteArraySerializer`, `dslSerializersModule`, `ktJson`, `unionBranchElement` / `unionBranchOf` / `unionBranchOfFirst` / `unionBranchTag` / `unionBranchMismatch`, `jsonEncoderOf`, `jsonDecoderOf`, `jsonElementOfAny`, `jsonElementOfSerializable` |
 
 Every name is spelled exactly as the emitters spell it today, so an emitted call site is unchanged by
@@ -75,7 +76,7 @@ its own normalisation in front of it.
 | repository | Maven Central |
 
 ```groovy
-implementation 'io.github.primegraph:primegraph-core-kt:1.0.0'
+implementation 'io.github.primegraph:primegraph-core-kt:1.4.0'
 ```
 
 Central serves it to anyone, with no credentials. GitHub Packages was the obvious place and turned
@@ -91,8 +92,26 @@ published `artifactId`. The two are kept equal on purpose so both the binary and
 consumption path resolve to the same thing; changing one without the other silently breaks the other.
 
 This is a plain Kotlin/JVM `java-library`, not a `com.android.library`. It touches no Android API, and
-a JVM artifact at toolchain 17 is consumable by both the generated Android libraries and the generated
-JVM ones.
+a JVM artifact is consumable by both the generated Android libraries and the generated JVM ones. It is
+built the way those are: Kotlin 2.4.20 on a JDK 25 toolchain, emitting Java 17 bytecode, with Gradle
+9.7.1 pinned by the wrapper.
+
+## Integer semantics
+
+OpenAPI defines `integer` by value: `1.0` and `1e2` are the integers 1 and 100, `1.5` is not an
+integer. kotlinx reads `1e2` into a `Long` but refuses `1.0`, so a typed decode first passes its input
+through `integralJson`:
+
+```kotlin
+ktJson.decodeFromJsonElement<Model>(integralJson(element)) // a JsonElement
+ktJson.decodeFromJsonElement<Model>(integralJson(text))    // JSON text, parsed with ktJson
+```
+
+Every number written with a fraction or an exponent whose value is whole and fits a `Long` is
+respelled as plain digits, computed exactly on `BigDecimal`. Plain integers, fractions, values past the
+`Long` range, strings, booleans and null are left as they are, so an integer slot still refuses `1.5`.
+The rewrite needs no knowledge of the target: a `Double` slot reads `1` exactly as it read `1.0`, and
+`-0.0` becomes `-0`, keeping its sign. A `BigDecimal` slot reads the value with scale 0.
 
 ## Layout
 
