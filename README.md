@@ -93,8 +93,8 @@ consumption path resolve to the same thing; changing one without the other silen
 
 This is a plain Kotlin/JVM `java-library`, not a `com.android.library`. It touches no Android API, and
 a JVM artifact is consumable by both the generated Android libraries and the generated JVM ones. It is
-built the way those are: Kotlin 2.4.20 on a JDK 25 toolchain, emitting Java 17 bytecode, with Gradle
-9.8.0 pinned by the wrapper.
+built the way those are: Kotlin 2.4.21 on a JDK 25 toolchain, emitting Java 17 bytecode, with Gradle
+9.8.1 pinned by the wrapper.
 
 ## Integer semantics
 

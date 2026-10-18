@@ -2,11 +2,11 @@ import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-  id 'org.jetbrains.kotlin.jvm' version '2.4.20'
+  id 'org.jetbrains.kotlin.jvm' version '2.4.21'
   // Runtime.File is @Serializable and the codec core declares KSerializers, so
   // the serialization compiler plugin is required here as it is in every
   // generated package. Its version is pinned to the Kotlin version.
-  id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.20'
+  id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.21'
   id 'java-library'
   // Sonatype ships no official Gradle plugin for the Central Portal. This one
   // assembles the javadoc artifact, signs everything and uploads the bundle,
